@@ -10,6 +10,9 @@ class App {
     private textInput: HTMLInputElement;
     private bezierAccuracy: HTMLInputElement;
     private sizeInput: HTMLInputElement;
+    private arcRadiusInput: HTMLInputElement;
+    private arcStartAngleInput: HTMLInputElement;
+    private arcEndAngleInput: HTMLInputElement;
     private renderDiv: HTMLDivElement;
     private outputTextarea: HTMLTextAreaElement;
 
@@ -17,7 +20,20 @@ class App {
         var size = this.sizeInput.valueAsNumber;
         if (!size) size = parseFloat(this.sizeInput.value);
         if (!size) size = 100;
-        this.render(this.selectFamily.selectedIndex, this.selectVariant.selectedIndex, this.textInput.value, size, this.unionCheckbox.checked, this.separateCheckbox.checked, parseFloat(this.bezierAccuracy.value) || undefined);
+
+        var arcRadius = this.arcRadiusInput.valueAsNumber;
+        if (!arcRadius) arcRadius = parseFloat(this.arcRadiusInput.value);
+        if (!arcRadius) size = 100;
+
+        var arcStartAngle = this.arcStartAngleInput.valueAsNumber;
+        if (!arcStartAngle) arcStartAngle = parseFloat(this.arcStartAngleInput.value);
+        if (!arcStartAngle) size = 45;
+
+        var arcEndAngle = this.arcEndAngleInput.valueAsNumber;
+        if (!arcEndAngle) arcEndAngle = parseFloat(this.arcEndAngleInput.value);
+        if (!arcEndAngle) size = 135;
+
+        this.render(this.selectFamily.selectedIndex, this.selectVariant.selectedIndex, this.textInput.value, size, this.unionCheckbox.checked, this.separateCheckbox.checked, parseFloat(this.bezierAccuracy.value) || undefined, arcRadius, arcStartAngle, arcEndAngle);
     };
 
     private loadVariants = () => {
@@ -39,13 +55,16 @@ class App {
         this.textInput = this.$('#input-text') as HTMLInputElement;
         this.bezierAccuracy = this.$('#input-bezier-accuracy') as HTMLInputElement;
         this.sizeInput = this.$('#input-size') as HTMLInputElement;
+        this.arcRadiusInput = this.$('#input-arc-radius') as HTMLInputElement;
+        this.arcStartAngleInput = this.$('#input-arc-start-angle') as HTMLInputElement;
+        this.arcEndAngleInput = this.$('#input-arc-end-angle') as HTMLInputElement;
         this.renderDiv = this.$('#svg-render') as HTMLDivElement;
         this.outputTextarea = this.$('#output-svg') as HTMLTextAreaElement;
     }
 
     handleEvents() {
         this.selectFamily.onchange = this.loadVariants;
-        this.selectVariant.onchange = this.textInput.onchange = this.textInput.onkeyup = this.sizeInput.onchange = this.unionCheckbox.onchange = this.separateCheckbox.onchange = this.bezierAccuracy.onchange = this.renderCurrent;
+        this.selectVariant.onchange = this.textInput.onchange = this.textInput.onkeyup = this.sizeInput.onchange = this.unionCheckbox.onchange = this.separateCheckbox.onchange = this.bezierAccuracy.onchange = this.arcRadiusInput.onchange = this.arcStartAngleInput.onchange = this.arcEndAngleInput.onchange = this.renderCurrent;
     }
 
     $(selector: string) {
@@ -70,8 +89,7 @@ class App {
         xhr.send();
     }
 
-    render(fontIndex: number, variantIndex: number, text: string, size: number, union: boolean, separate: boolean, bezierAccuracy: number) {
-
+    render(fontIndex: number, variantIndex: number, text: string, size: number, union: boolean, separate: boolean, bezierAccuracy: number, arcRadius: number, arcStartAngle: number, arcEndAngle: number) {
         var f = this.fontList.items[fontIndex];
         var v = f.variants[variantIndex];
         var url = f.files[v].substring(5);  //remove http:
@@ -81,12 +99,15 @@ class App {
             //generate the text using a font
             var textModel = new makerjs.models.Text(font, text, size, union, false, bezierAccuracy);
 
+            var arc = new makerjs.paths.Arc([0, 0], arcRadius, arcStartAngle, arcEndAngle);
+            makerjs.layout.childrenOnPath(textModel, arc, 0, true);
+
             if (separate) {
                 for (var i in textModel.models) {
                     textModel.models[i].layer = i;
                 }
             }
-            
+
             var svg = makerjs.exporter.toSVG(textModel);
 
             this.renderDiv.innerHTML = svg;
